@@ -1,6 +1,4 @@
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
 import os
 import json
 import httpx
@@ -11,8 +9,6 @@ from docx import Document
 from PIL import Image
 import io
 import tempfile
-from dotenv import load_dotenv
-load_dotenv()
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
 
 app = FastAPI()
@@ -24,9 +20,9 @@ ALLOWED_TYPES = {
 }
 MAX_SIZE = 20 * 1024 * 1024
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "https://ollama.com")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:32b")
-OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
+OLLAMA_URL = os.getenv("OLLAMA_URL")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 
 
 @app.post("/extract")
