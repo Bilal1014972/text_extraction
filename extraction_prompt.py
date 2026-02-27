@@ -17,9 +17,11 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 7. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
 8. If the document contains multiple specification versions or dates, use the most recent one.
 9. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
-10. Return ONLY the JSON object. No explanations, no markdown, no backticks.
+10. Return ONLY the JSON object. No explanations, no markdown, no backticks. 
+
 
 ## OUTPUT JSON SCHEMA
+Do not use "```json" in your response and ensure the output adheres strictly to JSON format. Do not include comments, additional text, or missing delimiters.
 
 Return a JSON object with the following structure:
 
