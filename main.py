@@ -1,4 +1,6 @@
 import pytesseract
+import platform
+import shutil
 import os
 import json
 import httpx
@@ -10,6 +12,13 @@ from PIL import Image
 import io
 import tempfile
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
+
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    tesseract_path = shutil.which("tesseract")
+    if tesseract_path:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 app = FastAPI()
 
