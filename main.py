@@ -13,6 +13,9 @@ import io
 import tempfile
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
 
+from dotenv import load_dotenv
+load_dotenv()
+
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:

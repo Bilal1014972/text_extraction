@@ -19,11 +19,29 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 9. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
 10. Return ONLY the JSON object. No explanations, no markdown, no backticks. 
 
+# DOCUMENT CLASSIFICATION RULES
+Classify the document into ONE of these types based on its content:
+- "Ingredient Specification" — Contains physical/chemical properties, nutritional data, ingredient statements, microbiological limits. Defines WHAT the ingredient IS.
+- "Certificate of Analysis (COA)" — Contains lot-specific test results against specification limits. Tests a SPECIFIC BATCH. Usually has lot/batch numbers, test dates, pass/fail results.
+- "Safety Data Sheet (SDS)" — Contains hazard identification, first aid measures, fire-fighting measures, GHS classifications, sections numbered 1-16. Safety-focused.
+- "Allergen Statement" — Standalone document focused entirely on allergen declarations, cross-contamination risks, facility allergen controls.
+- "Certification" — Kosher, Halal, Organic, RSPO, Non-GMO, Gluten-Free certificates. Usually issued by a certifying body with certificate numbers and expiry dates.
+- "Other" — Does not fit any of the above categories.
+
+Use the document's title, section headings, and content structure to determine the type. If a document contains multiple types of information (e.g., a spec sheet with allergen info), classify by its PRIMARY purpose.
+
 
 ## OUTPUT JSON SCHEMA
 Do not use "```json" in your response and ensure the output adheres strictly to JSON format. Do not include comments, additional text, or missing delimiters.
 
 Return a JSON object with the following structure:
+
+{
+  "document_classification": {
+    "document_type": "string — one of: Ingredient Specification, Certificate of Analysis (COA), Safety Data Sheet (SDS), Allergen Statement, Certification, Other",
+    "confidence": "string — High, Medium, or Low",
+    "reasoning": "string — brief explanation of why this type was chosen"
+},
 
 {
   "basic_information": {
