@@ -41,9 +41,8 @@ Return a JSON object with the following structure:
     "document_type": "string — one of: Ingredient Specification, Certificate of Analysis (COA), Safety Data Sheet (SDS), Allergen Statement, Certification, Other",
     "confidence": "string — High, Medium, or Low",
     "reasoning": "string — brief explanation of why this type was chosen"
-},
+  },
 
-{
   "basic_information": {
     "ingredient_name": "string",
     "common_name_alternative_name": "string",
@@ -85,7 +84,7 @@ Return a JSON object with the following structure:
     "storage_temp": "string",
     "storage_humidity": "string",
     "special_handling": "string",
-    "packaging_type": "string",
+    "packaging_type": "string — single value, e.g. Bag, Box, Drum, Pail, Tote, Bulk",
     "packaging_material": "string",
     "pack_size": "string",
     "units_per_pallet": "string",
@@ -110,83 +109,13 @@ Return a JSON object with the following structure:
     "cost_tier": "string"
   },
 
-  "physical_and_chemical_properties": {
-    "application_category": "string",
-    "sub_category": "string",
-    "physical_form": "string",
-    "appearance": "string",
-    "odor": "string",
-    "taste": "string",
-    "color": "string",
-    "ph": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "active_content": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "dry_matter": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "moisture": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "water_activity": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "particle_size": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "bulk_density": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "viscosity": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "melting_point": {
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "method": "string"
-    },
-    "solubility": "string",
-    "hygroscopicity": "string",
-    "stability_notes": "string",
-    "specification_version": "string",
-    "additional_properties": [
-      {
-        "property_name": "string",
-        "min": null,
-        "max": null,
-        "unit": "string",
-        "specification": "string",
-        "method": "string"
-      }
-    ]
-  },
+  "physical_and_chemical_properties": [
+    {
+      "property": "string — e.g. Appearance, Odor, Taste, Color, pH, Moisture, Water Activity, Particle Size, Bulk Density, Viscosity, Melting Point, Solubility, Scoville Heat Units, Granulation, Physical Form, etc.",
+      "value": "string — the value as written in document, e.g. '8% MAX', '10000-20000 SHU MAX', 'Medium red to light brownish red', '0.600 MAX', '95% MIN thru US #20'",
+      "unit": "string — e.g. %, SHU, pH, Aw, g/cm³, cP, °C, mm, or N/A for descriptive properties"
+    }
+  ],
 
   "functionality": {
     "functional_properties": ["string"],
@@ -203,7 +132,7 @@ Return a JSON object with the following structure:
         "name": "string",
         "unit": "string",
         "value": null,
-        "percent_dv": "string"
+        "percent_dv": "string — percent daily value if available, otherwise N/A"
       }
     ]
   },
@@ -282,8 +211,8 @@ Return a JSON object with the following structure:
 
 ## IMPORTANT NOTES ON SPECIFIC FIELDS
 
-### physical_and_chemical_properties.additional_properties
-Use this array for any physical/chemical properties found in the document that don't map to the named fields above. Examples: Scoville heat units, granulation, ash content, etc.
+### physical_and_chemical_properties
+This is a flat array of ALL physical and chemical properties found in the document. Each property is an object with property name, value (as written in the document including any MIN/MAX/specification text), and unit. Include ALL properties found: Appearance, Odor, Taste, Color, pH, Moisture, Water Activity, Particle Size, Bulk Density, Viscosity, Melting Point, Solubility, Scoville Heat Units, Granulation, Ash Content, Active Content, Dry Matter, Physical Form, etc. Do NOT skip any property found in the document.
 
 ### microbiological
 This is a top-level array for ALL microbiological specifications. Common parameters include: Total Plate Count, Yeast, Mold, E. coli, Salmonella, Coliform, Listeria. For "None Detected" or "Negative" results, set max to 0 and specification to the exact text (e.g., "None Detected", "Negative", "Absent").
