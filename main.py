@@ -12,6 +12,7 @@ from PIL import Image
 import io
 import tempfile
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
+from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,6 +25,14 @@ else:
         pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ALLOWED_TYPES = {
     "application/pdf",
