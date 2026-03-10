@@ -9,73 +9,41 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 
 ## RULES
 1. Extract ONLY information explicitly stated in the document. Do NOT infer, guess, or fabricate data.
-2. If a field's value is not found in the document, return "N/A" for string fields, null for numeric fields, and [] for array fields.
-3. For numeric values, extract the number only (e.g., "8% MAX" → value: 8, unit: "%", specification: "MAX").
-4. Preserve exact values as written — do not convert units or round numbers.
-5. For fields with Min/Max ranges, capture both values separately.
-6. Allergen presence should be determined from allergen statements — "free from" = "Not Present", "contains" = "Present", "may contain" = "May Contain (Cross Contamination)".
-7. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
-8. If the document contains multiple specification versions or dates, use the most recent one.
-9. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
-10. Return ONLY the JSON object. No explanations, no markdown, no backticks. 
+2. If a field's value is not found in the document, return "" (empty string) for string fields, null for numeric fields, and [] for array fields.
+3. Preserve exact values as written — do not convert units or round numbers.
+4. Allergen presence should be determined from allergen statements — "free from" = "not_present", "contains" = "contains", "may contain" = "may_contain".
+5. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
+6. If the document contains multiple specification versions or dates, use the most recent one.
+7. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
+8. Return ONLY the JSON object. No explanations, no markdown, no backticks.
 
-# DOCUMENT CLASSIFICATION RULES
+## DOCUMENT CLASSIFICATION RULES
 Classify the document into ONE of these types based on its content:
-- "Ingredient Specification" — Contains physical/chemical properties, nutritional data, ingredient statements, microbiological limits. Defines WHAT the ingredient IS.
-- "Certificate of Analysis (COA)" — Contains lot-specific test results against specification limits. Tests a SPECIFIC BATCH. Usually has lot/batch numbers, test dates, pass/fail results.
-- "Safety Data Sheet (SDS)" — Contains hazard identification, first aid measures, fire-fighting measures, GHS classifications, sections numbered 1-16. Safety-focused.
-- "Allergen Statement" — Standalone document focused entirely on allergen declarations, cross-contamination risks, facility allergen controls.
-- "Certification" — Kosher, Halal, Organic, RSPO, Non-GMO, Gluten-Free certificates. Usually issued by a certifying body with certificate numbers and expiry dates.
-- "Other" — Does not fit any of the above categories.
-
-Use the document's title, section headings, and content structure to determine the type. If a document contains multiple types of information (e.g., a spec sheet with allergen info), classify by its PRIMARY purpose.
-
+- "ingredient_specification" — Contains physical/chemical properties, nutritional data, ingredient statements, microbiological limits.
+- "coa" — Certificate of Analysis. Contains lot-specific test results, batch numbers, pass/fail results.
+- "sds" — Safety Data Sheet. Contains hazard identification, GHS classifications, sections 1-16.
+- "allergen_statement" — Standalone allergen declarations and facility allergen controls.
+- "certification" — Kosher, Halal, Organic, RSPO, Non-GMO certificates with certificate numbers.
+- "other" — Does not fit any of the above categories.
 
 ## OUTPUT JSON SCHEMA
-Do not use "```json" in your response and ensure the output adheres strictly to JSON format. Do not include comments, additional text, or missing delimiters.
-
-Return a JSON object with the following structure:
+Do not use "```json" in your response. Return ONLY valid JSON with no comments or extra text.
 
 {
-  "document_classification": {
-    "document_type": "string — one of: Ingredient Specification, Certificate of Analysis (COA), Safety Data Sheet (SDS), Allergen Statement, Certification, Other",
-    "confidence": "string — High, Medium, or Low",
-    "reasoning": "string — brief explanation of why this type was chosen"
-  },
-
-  "basic_information": {
+  "ingredient": {
+    "ingredient_code": "string — product/specification reference code",
     "ingredient_name": "string",
-    "common_name_alternative_name": "string",
-    "label_name_ingredient_statement": "string",
-    "ingredient_reference_code": "string",
-    "erp_material_code": "string",
+    "common_commercial_name": "string — common or alternative name",
+    "label_name_statement": "string — full ingredient statement for labeling",
+    "bnf_material_code": "string — ERP or material code",
     "legacy_codes": "string",
-    "status": "string"
-  },
-
-  "supplier_information": {
-    "supplier_name": "string",
-    "supplier_id": "string",
-    "supplier_ingredient_code": "string",
-    "supplier_status": "string"
-  },
-
-  "classification_and_origin": {
-    "ingredient_type": "string",
-    "category": "string",
-    "subcategory": "string",
+    "status": "string — one of: active, pending, inactive, discontinued",
+    "ingredient_type": "string — e.g. spice, additive, preservative, sweetener, flour, oil, extract",
+    "category": "string — e.g. seasoning, grain, dairy, protein, fat_oil, sweetener, additive",
+    "subcategory": "string — e.g. dry_blend, frozen, fresh, powder, liquid, granular",
     "country_of_origin": "string",
     "geographical_source": "string",
-    "processing_location": "string"
-  },
-
-  "other_standard_ids": {
-    "cas_number": "string",
-    "e_number": "string",
-    "inci_name": "string"
-  },
-
-  "shelf_life_storage_and_packaging": {
+    "processing_location": "string",
     "shelf_life_unopened": "string",
     "shelf_life_opened": "string",
     "storage_conditions": "string",
@@ -84,117 +52,133 @@ Return a JSON object with the following structure:
     "storage_temp": "string",
     "storage_humidity": "string",
     "special_handling": "string",
-    "packaging_type": "string — single value, e.g. Bag, Box, Drum, Pail, Tote, Bulk",
-    "packaging_material": "string",
+    "packaging_type": "string — one of: bag, box, drum, pail, tote, bulk, pouch, can, bottle, other",
     "pack_size": "string",
     "units_per_pallet": "string",
     "net_weight": "string",
     "gross_weight": "string",
     "gtin": "string",
-    "pallet_type": "string",
+    "pallet_type": "string — one of: euro, us, custom, other",
     "recyclability": "string",
-    "transport_conditions": "string",
-    "other_instructions": "string"
+    "transport_conditions": "string — one of: ambient, chilled, frozen, other",
+    "other_instructions": "string",
+
+    "suppliers": [
+      {
+        "supplier_id": "string",
+        "supplier_ingredient_code": "string",
+        "supplier_name": "string",
+        "supplier_status": "string — one of: active, inactive, pending, suspended",
+        "supplier_relationship_tier": "string — one of: tier1, tier2, tier3"
+      }
+    ],
+
+    "standard_ids": {
+      "cas_number": "string",
+      "e_number": "string",
+      "inci_name": "string"
+    },
+
+    "cost": {
+      "standard_cost": "string",
+      "cost_basis": "string — one of: per_kg, per_lb, per_ton, per_unit, other",
+      "currency": "string — one of: usd, eur, gbp, other",
+      "cost_valid_from": "string — date in DD/MM/YYYY format",
+      "cost_valid_to": "string — date in DD/MM/YYYY format",
+      "last_cost_update": "string — date in DD/MM/YYYY format",
+      "freight_cost": "string",
+      "taxes": "string",
+      "cost_tier": "string — one of: tier1, tier2, tier3"
+    }
   },
 
-  "cost": {
-    "standard_cost": "string",
-    "cost_basis": "string",
-    "currency": "string",
-    "cost_valid_from": "string",
-    "cost_valid_to": "string",
-    "last_cost_update": "string",
-    "freight_cost": "string",
-    "taxes": "string",
-    "cost_tier": "string"
-  },
-
-  "physical_and_chemical_properties": [
+  "allergens": [
     {
-      "property": "string — e.g. Appearance, Odor, Taste, Color, pH, Moisture, Water Activity, Particle Size, Bulk Density, Viscosity, Melting Point, Solubility, Scoville Heat Units, Granulation, Physical Form, etc.",
-      "value": "string — the value as written in document, e.g. '8% MAX', '10000-20000 SHU MAX', 'Medium red to light brownish red', '0.600 MAX', '95% MIN thru US #20'",
-      "unit": "string — e.g. %, SHU, pH, Aw, g/cm³, cP, °C, mm, or N/A for descriptive properties"
+      "allergen_name": "string — one of: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame, other",
+      "presence_level": "string — one of: contains, may_contain, not_present, undeclared",
+      "cross_contamination_risk": "string — one of: high, medium, low, none",
+      "testing_method": "string — one of: elisa, pcr, lateral_flow, supplier_declaration, other"
     }
   ],
 
-  "functionality": {
-    "functional_properties": ["string"],
-    "application_areas": ["string"],
-    "process_considerations": "string",
-    "specification_version": "string"
-  },
-
-  "nutritional_composition": {
-    "reference_basis": "string",
-    "nutrient_data_source": "string",
-    "nutrients": [
-      {
-        "name": "string",
-        "unit": "string",
-        "value": null,
-        "percent_dv": "string — percent daily value if available, otherwise N/A"
-      }
-    ]
-  },
-
-  "allergens": {
-    "allergen_statement": "string",
-    "allergen_details": [
-      {
-        "allergen_name": "string",
-        "presence_level": "string",
-        "cross_contamination_risk": "string",
-        "testing_method": "string"
-      }
-    ]
-  },
-
   "certifications": [
     {
-      "certificate_type": "string",
-      "certificate_name": "string",
-      "certifying_body": "string",
+      "certification_type": "string — e.g. supplier_spec, kosher, halal, organic, non_gmo, rspo, gluten_free, gmp, other",
+      "certifying_body": "string — e.g. ou, ifanca, usda, sgs, bv, other",
       "certificate_number": "string",
-      "status": "string",
-      "issue_date": "string",
-      "expiry_date": "string",
+      "status": "string — one of: active, expired, pending, revoked",
+      "issue_date": "string — date in DD/MM/YYYY format",
+      "expiry_date": "string — date in DD/MM/YYYY format",
       "notes": "string"
     }
   ],
 
-  "regulatory_compliance": [
+  "regulatory_compliances": [
     {
-      "region_jurisdiction": "string",
-      "regulatory_status": "string",
+      "region": "string — one of: us, eu, uk, canada, australia, china, japan, india, global, other",
+      "regulatory_status": "string — one of: approved, restricted, banned, pending, exempt",
       "product_category": "string",
-      "unit": "string",
-      "effective_date": "string",
+      "unit": "string — one of: percent, ppm, mg_per_kg, mg_per_l, iu, other",
+      "effective_date": "string — date in DD/MM/YYYY format",
       "maximum_usage_level": "string",
-      "approved_claims": "string",
-      "prohibited_claims": "string",
       "labelling_requirements": "string",
-      "notification_required": "string",
+      "notification_required": "string — 1 for yes, 0 for no",
       "usage_conditions": "string",
-      "additional_notes": "string"
+      "additional_notes": "string",
+      "approved_claims": "string",
+      "prohibited_claims": "string"
+    }
+  ],
+
+  "specifications": {
+    "physical_properties": [
+      {
+        "property_name": "string — e.g. appearance, odor, taste, color, ph, moisture, water_activity, particle_size, bulk_density, viscosity, melting_point, solubility, scoville_heat_units, granulation, physical_form",
+        "property_value": "string — the value as written, e.g. '8% MAX', 'Medium red to light brownish red'",
+        "property_unit": "string — e.g. %, SHU, pH, Aw, g/cm³, cP, °C, mm, mg, g, N/A",
+        "display_order": "string — sequential number starting from 1"
+      }
+    ],
+
+    "functionality": {
+      "functional_properties": ["string — e.g. emulsification, thickening, sweetening, flavoring, coloring, preservative, stabilizer"],
+      "application_areas": ["string — e.g. bakery, dairy, beverage, confectionery, meat, snacks, sauce"],
+      "process_considerations": "string",
+      "specification_version": "string"
+    },
+
+    "nutritional_composition": {
+      "reference_basis": "string — one of: per_100g, per_serving, per_100ml, as_prepared",
+      "nutrient_data_source": "string — one of: lab_analysis, supplier_data, calculated, database, other",
+      "nutrients": [
+        {
+          "nutrient_name": "string — e.g. calories, total_fat, saturated_fat, trans_fat, cholesterol, sodium, total_carbohydrate, dietary_fiber, total_sugars, added_sugars, protein, vitamin_d, calcium, iron, potassium, vitamin_a, vitamin_c, folate, ash, moisture",
+          "nutrient_unit": "string — e.g. kcal, g, mg, mcg, mcg_rae, iu",
+          "nutrient_value": "string — the numeric value as string",
+          "nutrient_percent_dv": "string — percent daily value if available, otherwise empty string",
+          "display_order": "string — sequential number starting from 1"
+        }
+      ]
+    }
+  },
+
+  "microbiological": [
+    {
+      "parameter": "string — e.g. total_plate_count, yeast, mold, e_coli, salmonella, coliform, listeria",
+      "min": null,
+      "max": null,
+      "unit": "string — e.g. CFU/g, CFU/25g, CFU/375g",
+      "specification": "string — e.g. MAX, None Detected, Negative, Absent",
+      "method": "string — e.g. AOAC 991.14, FDA BAM 8TH EDITION"
     }
   ],
 
   "documents": [
     {
-      "document_type": "string",
+      "document_type": "string — one of: spec_sheet, coa, sds, allergen_statement, certification, other",
       "document_name": "string",
-      "notes": "string"
-    }
-  ],
-
-  "microbiological": [
-    {
-      "parameter": "string",
-      "min": null,
-      "max": null,
-      "unit": "string",
-      "specification": "string",
-      "method": "string"
+      "notes": "string",
+      "file": "string — original filename"
     }
   ],
 
@@ -209,25 +193,25 @@ Return a JSON object with the following structure:
   }
 }
 
-## IMPORTANT NOTES ON SPECIFIC FIELDS
+## IMPORTANT NOTES
 
-### physical_and_chemical_properties
-This is a flat array of ALL physical and chemical properties found in the document. Each property is an object with property name, value (as written in the document including any MIN/MAX/specification text), and unit. Include ALL properties found: Appearance, Odor, Taste, Color, pH, Moisture, Water Activity, Particle Size, Bulk Density, Viscosity, Melting Point, Solubility, Scoville Heat Units, Granulation, Ash Content, Active Content, Dry Matter, Physical Form, etc. Do NOT skip any property found in the document.
+### specifications.physical_properties
+Extract ALL physical and chemical properties as a flat array. Each entry needs property_name (snake_case), property_value (as written), property_unit, and display_order (sequential from "1"). Include: appearance, odor, taste, color, ph, moisture, water_activity, particle_size, bulk_density, viscosity, melting_point, solubility, scoville_heat_units, granulation, ash_content, physical_form, etc.
 
 ### microbiological
-This is a top-level array for ALL microbiological specifications. Common parameters include: Total Plate Count, Yeast, Mold, E. coli, Salmonella, Coliform, Listeria. For "None Detected" or "Negative" results, set max to 0 and specification to the exact text (e.g., "None Detected", "Negative", "Absent").
+Separate top-level array for ALL microbiological specs. For "None Detected" or "Negative", set max to 0 and specification to the exact text.
 
-### allergens.allergen_details
-Only include allergens that are explicitly mentioned in the document. Determine presence_level from context:
-- "free from" / "not permitted" / "does not contain" → "Not Present"
-- "contains" → "Present"  
-- "may contain" / "traces" / "processed in facility" → "May Contain (Cross Contamination)"
+### allergens
+Top-level array. Only include allergens explicitly mentioned. Use lowercase enum values: not_present, contains, may_contain, undeclared. Use lowercase allergen names: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame, other.
 
-### nutritional_composition.nutrients
-Extract ALL nutritional values listed. Common nutrients: Calories, Total Fat, Saturated Fat, Trans Fat, Cholesterol, Sodium, Total Carbohydrate, Dietary Fiber, Total Sugars, Added Sugars, Protein, Vitamin D, Calcium, Iron, Potassium, etc.
+### specifications.nutritional_composition.nutrients
+Extract ALL nutritional values. Use snake_case for nutrient_name (e.g. total_fat, saturated_fat). nutrient_value should be a string. Include display_order starting from "1".
 
-### metadata
-Extract document metadata like title, dates, version numbers, and manufacturer details. This helps with traceability.
+### dates
+All dates should be in DD/MM/YYYY format when possible.
+
+### enum values
+Use lowercase snake_case for ALL enum/select fields (e.g. "active" not "Active", "per_100g" not "Per 100g", "bag" not "Bag").
 """
 
 
@@ -239,7 +223,6 @@ EXTRACTION_USER_PROMPT_TEMPLATE = """Extract all ingredient specification data f
 Return ONLY the JSON object. No explanations, no markdown fences, no additional text."""
 
 
-# Example usage / integration snippet
 def build_extraction_messages(extracted_text: str) -> list[dict]:
     """Build the messages array for the LLM API call."""
     return [
