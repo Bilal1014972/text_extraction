@@ -83,7 +83,7 @@ async def analyze(file: UploadFile = File(...)):
 
     return {
         "filename": file.filename,
-        "structured_data": structured_data,
+        **structured_data,
     }
 
 
