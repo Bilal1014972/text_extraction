@@ -190,8 +190,22 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "manufacturer": "string",
     "manufacturer_address": "string",
     "manufacturer_contact": "string"
-  }
+  },
+  "extraction_stats": {
+    "fields_total": "number — total number of form fields evaluated",
+    "fields_extracted": "number — how many fields have a value extracted from the document",
+    "completeness_score": "number — percentage (0-100) of fields_extracted / fields_total",
+    "high_confidence_count": "number — how many extracted fields you are highly confident about",
+    "confidence_score": "number — percentage (0-100) of high_confidence_count / fields_extracted",
+    "field_confidences": [
+      {
+        "field": "string — dot-notation path to the field, e.g. 'ingredient.ingredient_name', 'allergens[0].allergen_name', 'specifications.physical_properties[0].property_value'",
+        "confidence": "string — high or low"
+      }
+    ]
 }
+
+
 
 ## IMPORTANT NOTES
 
@@ -212,6 +226,25 @@ All dates should be in DD/MM/YYYY format when possible.
 
 ### enum values
 Use lowercase snake_case for ALL enum/select fields (e.g. "active" not "Active", "per_100g" not "Per 100g", "bag" not "Bag").
+
+### extraction_stats
+
+**Confidence levels per field:**
+- "high" — The value was explicitly and clearly stated in the document. You copied it directly. Example: "MOISTURE 8% MAX" → moisture field is high confidence.
+- "low" — The value is uncertain. OCR was poor, text was ambiguous, or multiple conflicting values existed. Example: manufacturer address where spec code got mixed into the text.
+
+**field_confidences array:**
+- Include ONLY extracted fields (fields with actual values, not empty strings or N/A).
+- Each entry must have the dot-notation path and confidence level.
+- Be honest — if you inferred a value (like category or subcategory), mark it as low.
+
+**Overall stats:**
+- fields_total = sum of all section totals
+- fields_extracted = sum of all section extracted
+- completeness_score = round((fields_extracted / fields_total) * 100)
+- high_confidence_count = count of fields in field_confidences where confidence is "high"
+- confidence_score = round((high_confidence_count / fields_extracted) * 100)
+
 """
 
 
