@@ -196,6 +196,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "fields_extracted": "number — how many fields have a value extracted from the document",
     "completeness_score": "number — percentage (0-100) of fields_extracted / fields_total",
     "high_confidence_count": "number — how many extracted fields you are highly confident about",
+    "low_confidence_count": "number — how many extracted fields you are not confident about",
     "confidence_score": "number — percentage (0-100) of high_confidence_count / fields_extracted",
     "field_confidences": [
       {
@@ -243,6 +244,7 @@ Use lowercase snake_case for ALL enum/select fields (e.g. "active" not "Active",
 - fields_extracted = sum of all section extracted
 - completeness_score = round((fields_extracted / fields_total) * 100)
 - high_confidence_count = count of fields in field_confidences where confidence is "high"
+- low_confidence_count = count of fields in field_confidences where confidence is "low"
 - confidence_score = round((high_confidence_count / fields_extracted) * 100)
 
 """
