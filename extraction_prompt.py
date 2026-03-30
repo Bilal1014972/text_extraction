@@ -22,21 +22,37 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 12. Extract ALL microbiological specifications (e.g. Mesophilic Bacteria, Yeast, Mold, E. coli, Salmonella) as physical_properties entries.
 13. Extract ALL nutritional values from the document including Polyunsaturated Fat, Monounsaturated Fat, Sugar Alcohols, Soluble Fiber, Insoluble Fiber, and any other listed nutrients. Do NOT skip any nutrient.
 14. ai_suggestions must NEVER contain values from external knowledge not in the document. For example, do NOT suggest CAS numbers, pack sizes, or any data you know from training but is not in this specific document.
-15. For any table where one column represents a CONDITION (temperature, pressure, 
-    concentration, time, etc.) and remaining columns are MEASUREMENTS taken at 
-    that condition:
-    - The CONDITION column is never extracted as a property — it becomes the 
-      parenthetical suffix on every measurement in that row.
-    - Extract EACH measurement cell as its own separate physical_properties entry.
-    - property_name = "{exact column header} ({condition value})"
-    - NEVER produce a summary, combined, or grouped entry for a row. One cell = 
-      one entry, always.
-    - NEVER invent or paraphrase column header names. Copy them verbatim including 
-      spaces, slashes, parentheses, units, and capitalization.
-16. property_name must always be the EXACT column header text from the document — 
-    verbatim. Never abbreviate, translate, interpret, or rename. If the header 
-    is "Specific Gravity (Temp°F/60°F)", the property_name must contain that 
-    exact string — not "Density", not "Specific Gravity", not "Sp. Gravity".
+15. MULTI-COLUMN TABLE EXTRACTION — When you encounter a table where column headers may be garbled, split across lines, or concatenated by text extraction, you MUST:
+    a) Identify the individual column headers by analyzing the header row(s) and the data patterns below them.
+    b) Count the number of data values per row — that tells you how many columns exist.
+    c) Extract EACH cell as a separate physical_properties entry.
+    d) Use the correct column header as property_name with the row condition (e.g. temperature) in parentheses.
+    e) NEVER concatenate multiple cell values into one actual_value.
+    f) NEVER concatenate all column headers into one property_name.
+    
+    EXAMPLE — If the extracted text looks like this (garbled/merged headers):
+    
+    Specific Pounds/ Pounds/
+    Temp Gravity Gallon Gallon Viscosity
+    (°F) (Temp°F/60°F) (Temp°F) (DSB) (cP)
+    80 1.4125 11.78 9.20 160,000
+    90 1.4094 11.75 9.18 82,000
+    
+    Step 1: Recognize this is a 5-column table: Temp | Specific Gravity | Pounds/Gallon | Pounds/Gallon (DSB) | Viscosity
+    Step 2: Temp is the CONDITION column — it becomes the parenthetical suffix, NOT a property.
+    Step 3: Each data row produces 4 entries (one per measurement column):
+    
+    For row "80":
+    {"property_name": "Specific Gravity (80°F)", "actual_value": "1.4125", "property_value": "1.4125", "property_unit": ""}
+    {"property_name": "Pounds/Gallon (80°F)", "actual_value": "11.78", "property_value": "11.78", "property_unit": "lb/gal"}
+    {"property_name": "Pounds/Gallon DSB (80°F)", "actual_value": "9.20", "property_value": "9.20", "property_unit": "lb/gal"}
+    {"property_name": "Viscosity (80°F)", "actual_value": "160,000", "property_value": "160000", "property_unit": "cP"}
+      
+    ...repeat for every temperature row.
+    
+    WRONG (what NOT to do):
+    ❌ {"property_name": "Specific Pounds/ Pounds/ Temp Gravity Gallon Gallon Viscosity (80°F)", "actual_value": "1.4125 11.78 9.20 160,000"}
+    This concatenates all headers and all values — NEVER do this.
 
 ## DOCUMENT CLASSIFICATION RULES
 Classify the document into ONE of these types based on its content:
@@ -274,6 +290,7 @@ This array contains smart suggestions for fields that were NOT extracted from th
 - high_confidence_count = count of fields in field_confidences where confidence is "high"
 - confidence_score = round((high_confidence_count / fields_extracted) * 100)
 - low_confidence_count = count of fields in field_confidences where confidence is "low"
+
 
 """
 
