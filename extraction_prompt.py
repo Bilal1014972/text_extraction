@@ -22,6 +22,21 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 12. Extract ALL microbiological specifications (e.g. Mesophilic Bacteria, Yeast, Mold, E. coli, Salmonella) as physical_properties entries.
 13. Extract ALL nutritional values from the document including Polyunsaturated Fat, Monounsaturated Fat, Sugar Alcohols, Soluble Fiber, Insoluble Fiber, and any other listed nutrients. Do NOT skip any nutrient.
 14. ai_suggestions must NEVER contain values from external knowledge not in the document. For example, do NOT suggest CAS numbers, pack sizes, or any data you know from training but is not in this specific document.
+15. For any table where one column represents a CONDITION (temperature, pressure, 
+    concentration, time, etc.) and remaining columns are MEASUREMENTS taken at 
+    that condition:
+    - The CONDITION column is never extracted as a property — it becomes the 
+      parenthetical suffix on every measurement in that row.
+    - Extract EACH measurement cell as its own separate physical_properties entry.
+    - property_name = "{exact column header} ({condition value})"
+    - NEVER produce a summary, combined, or grouped entry for a row. One cell = 
+      one entry, always.
+    - NEVER invent or paraphrase column header names. Copy them verbatim including 
+      spaces, slashes, parentheses, units, and capitalization.
+16. property_name must always be the EXACT column header text from the document — 
+    verbatim. Never abbreviate, translate, interpret, or rename. If the header 
+    is "Specific Gravity (Temp°F/60°F)", the property_name must contain that 
+    exact string — not "Density", not "Specific Gravity", not "Sp. Gravity".
 
 ## DOCUMENT CLASSIFICATION RULES
 Classify the document into ONE of these types based on its content:
@@ -138,9 +153,10 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
   "specifications": {
     "physical_properties": [
       {
-        "property_name": "string — e.g. appearance, odor, taste, color, ph, moisture, water_activity, particle_size, bulk_density, viscosity, melting_point, solubility, scoville_heat_units, granulation, physical_form",
-        "property_value": "string — the value as written, e.g. '8% MAX', 'Medium red to light brownish red'",
-        "property_unit": "string — e.g. %, SHU, pH, Aw, g/cm3, cP, C, mm, mg, g, N/A",
+        "property_name": "string — use the ORIGINAL text from the document as-is, preserve spaces and capitalization, do NOT add underscores or convert to snake_case. E.g. 'Moisture', 'Loss on Drying', 'Scoville Heat Units', 'Baume Comm', 'Heavy Metals'",
+        "actual_value": "string — the EXACT value as written in the document, preserving all characters, ranges, and qualifiers. E.g. '41.7 – 42.3', '8% MAX', '<0.5', '10,000-20,000 SHU MAX', '99.5% Min.', 'White Free-Flowing Crystals'",
+        "property_value": "string — processed numeric value only: if range take the MAX number, if single value use as-is, strip all non-numeric characters except decimal point. E.g. '41.7 – 42.3' -> '42.3', '8% MAX' -> '8', '<0.5' -> '0.5', '10,000-20,000 SHU MAX' -> '20000', '99.5% Min.' -> '99.5'. For descriptive text (no numbers), keep as-is. E.g. 'White Free-Flowing Crystals' -> 'White Free-Flowing Crystals', 'None' -> 'None'",
+        "property_unit": "string — e.g. %, SHU, pH, Aw, g/cm3, cP, C, mm, mg, g, ppm, lbs/cubic ft, g/ml, per g. Extract from the value text.",
         "display_order": "string — sequential number starting from 1"
       }
     ],
@@ -159,6 +175,8 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
         {
           "nutrient_name": "string — e.g. calories, total_fat, saturated_fat, trans_fat, cholesterol, sodium, total_carbohydrate, dietary_fiber, total_sugars, added_sugars, protein, vitamin_d, calcium, iron, potassium, vitamin_a, vitamin_c, folate, ash, moisture",
           "nutrient_unit": "string — e.g. kcal, g, mg, mcg, mcg_rae, iu",
+          "actual_value": "string — the EXACT value as written in the document, preserving all characters and qualifiers. E.g. '< 0.10', '99.8', '0', '>50'",
+          "nutrient_value": "string — processed numeric value only, strip all non-numeric characters except decimal point. E.g. '< 0.10' -> '0.10', '>50' -> '50', '99.8' -> '99.8'",
           "nutrient_value": "string — the numeric value as string",
           "nutrient_percent_dv": "string — percent daily value if available, otherwise empty string",
           "display_order": "string — sequential number starting from 1"
@@ -204,17 +222,17 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
 ## IMPORTANT NOTES
 
 ### specifications.physical_properties
-Extract ALL physical, chemical, and microbiological properties as a flat array. Each entry needs property_name (snake_case), property_value (as written), property_unit, and display_order (sequential from "1"). You MUST include ALL of the following when present in the document:
-- Physical: appearance, odor, taste, color, physical_form, granulation, bulk_density, particle_size, viscosity, melting_point, solubility, scoville_heat_units
-- Chemical: fructose_content, dextrose_content, loss_on_drying, ash, heavy_metals, arsenic, chloride, lead, hmf, sulfate, ph, moisture, water_activity, active_content, dry_matter — extract every chemical specification row in the document
-- Microbiological: mesophilic_bacteria, yeast, mold, e_coli, salmonella, coliform, listeria, total_plate_count — extract every microbiological specification row in the document
+Extract ALL physical, chemical, and microbiological properties as a flat array. You MUST include ALL of the following when present in the document:
+- Physical: For Example: appearance, odor, taste, color, physical form, granulation, bulk density, particle_size, viscosity, melting point, solubility, scoville_heat_units etc.
+- Chemical: For Example: fructose content, dextrose content, loss on drying, ash, heavy metals, arsenic, chloride, lead, hmf, sulfate, ph, moisture, water activity, active content, dry matter etc— extract every chemical specification row in the document
+- Microbiological: For Example: mesophilic bacteria, yeast, mold, salmonella, coliform, listeria, total plate count etc — extract every microbiological specification row in the document
 Do NOT skip any specification row found in the document.
 
 ### allergens
 Top-level array. Only include allergens explicitly mentioned. Use lowercase enum values: not_present, contains, may_contain, undeclared. Use lowercase allergen names: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame, other.
 
 ### specifications.nutritional_composition.nutrients
-Extract EVERY nutritional value listed in the document — do NOT skip any. Common nutrients include but are not limited to: calories, calories_from_saturated_fat, total_fat, saturated_fat, trans_fat, polyunsaturated_fat, monounsaturated_fat, cholesterol, total_carbohydrate, total_sugars, sugar_alcohols, other_carbohydrates, dietary_fiber, soluble_fiber, insoluble_fiber, protein, calcium, iron, sodium, potassium, vitamin_d, vitamin_a, vitamin_c, vitamin_e, vitamin_b6, vitamin_b12, thiamine, riboflavin, niacin, folic_acid, biotin, pantothenic_acid, phosphorus, iodine, magnesium, zinc, copper, ash, moisture. Use snake_case for nutrient_name. nutrient_value should be a string. Include display_order starting from "1".
+Extract EVERY nutritional value listed in the document — do NOT skip any. Common nutrients include but are not limited to: calories, calories from saturated fat, total fat, saturated fat, trans fat, polyunsaturated fat, monounsaturated fat, cholesterol, total carbohydrate, total sugars, sugar alcohols, other carbohydrates, dietary fiber, soluble fiber, insoluble fiber, protein, calcium, iron, sodium, potassium, vitamin d, vitamin a, vitamin c, vitamin e, vitamin b6, vitamin b12, thiamine, riboflavin, niacin, folic acid, biotin, pantothenic acid, phosphorus, iodine, magnesium, zinc, copper, ash, moisture. nutrient value should be a string. Include display order starting from "1".
 
 ### dates
 All dates should be in DD/MM/YYYY format when possible.
