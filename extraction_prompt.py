@@ -8,16 +8,16 @@ structured ingredient data from raw text (PDF/image/docx extractions).
 EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction system. Your job is to extract structured ingredient specification data from raw document text and return it as a valid JSON object.
 
 ## RULES
-1. Extract ONLY information explicitly stated in the document. Do NOT infer, guess, or fabricate data. If a value is not written in the document, leave it as empty string — do NOT fill it with a reasonable guess. The following fields are commonly fabricated by mistake — leave them EMPTY unless the document explicitly states them: status, ingredient_type, category, subcategory, packaging_type, packaging_material, pallet_type, transport_conditions, supplier_status, supplier_relationship_tier, cost fields, country_of_origin, recyclability, certification status. If you want to suggest a value for an empty field, put it ONLY in ai_suggestions — NEVER in the main extraction fields.
+1. Extract ONLY information explicitly stated in the document. Do NOT infer, guess, or fabricate data. If a value is not written in the document, leave it as empty string — do NOT fill it with a reasonable guess. The following fields are commonly fabricated by mistake — leave them EMPTY unless the document explicitly states them: status, ingredient_type, category, subcategory, packaging_type, packaging_material, pallet_type, transport_conditions, cost fields, country_of_origin, recyclability, certification status. If you want to suggest a value for an empty field, put it ONLY in ai_suggestions — NEVER in the main extraction fields.
 2. If a field's value is not found in the document, return "" (empty string) for string fields, null for numeric fields, and [] for array fields.
 3. Preserve exact values as written — do not convert units or round numbers.
 4. Allergen presence should be determined from allergen statements — "free from" = "not_present", "contains" = "contains", "may contain" = "may_contain".
 5. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
-6. Any sort of product code or similar code given in the document is the supplier id. Always populate supplier id field when such code is given in the document.
+6. Any sort of product code or similar code given in the document is the "supplier_ingredient_code". Always populate "supplier_ingredient_code" field when such code is given in the document.
 7. If the document contains multiple specification versions or dates, use the most recent one.
 8. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
 9. Return ONLY the JSON object. No explanations, no markdown, no backticks.
-10. Extract ALL chemical specifications (e.g. Fructose %, Dextrose %, Ash %, Heavy Metals, Arsenic, Chloride, Lead, HMF, Sulfate, Loss on Drying) as physical_properties entries.
+10. Extract ALL chemical specifications (e.g. Fructose, Dextrose, Ash, Heavy Metals, Arsenic, Chloride, Lead, HMF, Sulfate, Loss on Drying) as physical_properties entries.
 11. The JSON structure must match the schema EXACTLY. suppliers, standard_ids, and cost must be INSIDE the ingredient object — never at root level.
 12. Extract ALL microbiological specifications (e.g. Mesophilic Bacteria, Yeast, Mold, E. coli, Salmonella) as physical_properties entries.
 13. Extract ALL nutritional values from the document including Polyunsaturated Fat, Monounsaturated Fat, Sugar Alcohols, Soluble Fiber, Insoluble Fiber, and any other listed nutrients. Do NOT skip any nutrient.
@@ -71,8 +71,6 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "ingredient_name": "string",
     "common_commercial_name": "string — common or alternative name",
     "label_name_statement": "string — full ingredient statement for labeling",
-    "bnf_material_code": "string — ERP or material code",
-    "legacy_codes": "string",
     "status": "string — e.g. active, pending, inactive, discontinued",
     "ingredient_type": "string — e.g. spice, additive, preservative, sweetener, flour, oil, extract",
     "category": "string — e.g. seasoning, grain, dairy, protein, fat_oil, sweetener, additive",
@@ -102,10 +100,8 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
     "suppliers": [
       {
-        "supplier_id": "string",
-        "supplier_name": "string",
-        "supplier_status": "string — e.g. active, inactive, pending, suspended",
-        "supplier_relationship_tier": "string — e.g. tier1, tier2, tier3"
+        "supplier_ingredient_code": "string",
+        "supplier_name": "string"
       }
     ],
  
@@ -130,16 +126,16 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
   "allergens": [
     {
-      "allergen_name": "string — e.g. milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame, other",
+      "allergen_name": "string — e.g. milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame",
       "presence_level": "string — e.g. contains, may_contain, not_present, undeclared",
       "cross_contamination_risk": "string — e.g. high, medium, low, none",
-      "testing_method": "string — e.g. elisa, pcr, lateral_flow, supplier_declaration, other"
+      "testing_method": "string — e.g. elisa, pcr, lateral flow, supplier declaration, other"
     }
   ],
  
   "certifications": [
     {
-      "certification_type": "string — e.g. supplier_spec, kosher, halal, organic, non_gmo, rspo, gluten_free, gmp, other",
+      "certification_type": "string — e.g. supplier spec, kosher, halal, organic, non gmo, rspo, gluten free, gmp, other",
       "certifying_body": "string — e.g. ou, ifanca, usda, sgs, bv, other",
       "certificate_number": "string",
       "status": "string — e.g. active, expired, pending, revoked",
@@ -169,7 +165,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
   "specifications": {
     "physical_properties": [
       {
-        "property_name": "string — use the ORIGINAL text from the document as-is, preserve spaces and capitalization, do NOT add underscores or convert to snake_case. E.g. 'Moisture', 'Loss on Drying', 'Scoville Heat Units', 'Baume Comm', 'Heavy Metals'",
+        "property_name": "string — use the ORIGINAL text from the document as-is, preserve spaces and capitalization, do NOT add underscores or convert to snake_case. E.g. 'Moisture', 'Loss on Drying', 'Scoville Heat Units', 'Baume Comm', 'Heavy Metals'" etc. Do not add units symbols to property name. For example property name should have value like Total Solids intsead of Total Solids (%).     
         "actual_value": "string — the EXACT value as written in the document, preserving all characters, ranges, and qualifiers. E.g. '41.7 – 42.3', '8% MAX', '<0.5', '10,000-20,000 SHU MAX', '99.5% Min.', 'White Free-Flowing Crystals'",
         "property_value": "string — processed numeric value only: if range take the MAX number, if single value use as-is, strip all non-numeric characters except decimal point. E.g. '41.7 – 42.3' -> '42.3', '8% MAX' -> '8', '<0.5' -> '0.5', '10,000-20,000 SHU MAX' -> '20000', '99.5% Min.' -> '99.5'. For descriptive text (no numbers), keep as-is. E.g. 'White Free-Flowing Crystals' -> 'White Free-Flowing Crystals', 'None' -> 'None'",
         "property_unit": "string — e.g. %, SHU, pH, Aw, g/cm3, cP, C, mm, mg, g, ppm, lbs/cubic ft, g/ml, per g. Extract from the value text.",
@@ -185,11 +181,11 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     },
  
     "nutritional_composition": {
-      "reference_basis": "string — e.g. per_100g, per_serving, per_100ml, as_prepared",
-      "nutrient_data_source": "string — e.g. lab_analysis, supplier_data, calculated, database, other",
+      "reference_basis": "string — e.g. per 100g, per serving, per 100ml, as prepared",
+      "nutrient_data_source": "string — e.g. lab analysis, supplier data, calculated, database, other",
       "nutrients": [
         {
-          "nutrient_name": "string — e.g. calories, total_fat, saturated_fat, trans_fat, cholesterol, sodium, total_carbohydrate, dietary_fiber, total_sugars, added_sugars, protein, vitamin_d, calcium, iron, potassium, vitamin_a, vitamin_c, folate, ash, moisture",
+          "nutrient_name": "string — e.g. calories, total fat, saturated fat, trans fat, cholesterol, sodium, total carbohydrate, dietary fiber, total sugars, added sugars, protein, vitamin d, calcium, iron, potassium, vitamin a, vitamin c, folate, ash, moisture",
           "nutrient_unit": "string — e.g. kcal, g, mg, mcg, mcg_rae, iu",
           "actual_value": "string — the EXACT value as written in the document, preserving all characters and qualifiers. E.g. '< 0.10', '99.8', '0', '>50'",
           "nutrient_value": "string — processed numeric value only, strip all non-numeric characters except decimal point. E.g. '< 0.10' -> '0.10', '>50' -> '50', '99.8' -> '99.8'",
@@ -212,7 +208,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
 
   "ai_suggestions": [
     {
-      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.status', 'ingredient.bnf_material_code', 'ingredient.suppliers[0].supplier_status'",
+      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.status', 'ingredient.ingredient_type'",
       "suggested_value": "string — the suggested value for this field",
       "reason": "string — brief explanation of why this value is suggested"
     }
@@ -245,7 +241,7 @@ Extract ALL physical, chemical, and microbiological properties as a flat array. 
 Do NOT skip any specification row found in the document.
 
 ### allergens
-Top-level array. Only include allergens explicitly mentioned. Use lowercase enum values: not_present, contains, may_contain, undeclared. Use lowercase allergen names: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame, other.
+Top-level array. Only include allergens explicitly mentioned. Use lowercase enum values: not_present, contains, may_contain, undeclared. Use lowercase allergen names: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame.
 
 ### specifications.nutritional_composition.nutrients
 Extract EVERY nutritional value listed in the document — do NOT skip any. Common nutrients include but are not limited to: calories, calories from saturated fat, total fat, saturated fat, trans fat, polyunsaturated fat, monounsaturated fat, cholesterol, total carbohydrate, total sugars, sugar alcohols, other carbohydrates, dietary fiber, soluble fiber, insoluble fiber, protein, calcium, iron, sodium, potassium, vitamin d, vitamin a, vitamin c, vitamin e, vitamin b6, vitamin b12, thiamine, riboflavin, niacin, folic acid, biotin, pantothenic acid, phosphorus, iodine, magnesium, zinc, copper, ash, moisture. nutrient value should be a string. Include display order starting from "1".
@@ -254,7 +250,10 @@ Extract EVERY nutritional value listed in the document — do NOT skip any. Comm
 All dates should be in DD/MM/YYYY format when possible.
 
 ### enum values
-Use lowercase snake_case for ALL enum/select fields (e.g. "active" not "Active", "per_100g" not "Per 100g", "bag" not "Bag").
+Use lowercase values for all enum/select fields (e.g. "active" not "Active", "bag" not "Bag").
+
+### Note
+- Do not convert values to snake_case. Preserve the exact format as written in the document. Only use snake_case if it explicitly appears in the source text.
 
 ### ai_suggestions — IMPORTANT
 This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string) but where you can make a reasonable suggestion based ONLY on information within this specific document. Rules:
@@ -273,8 +272,8 @@ This array contains smart suggestions for fields that were NOT extracted from th
 ### extraction_stats
 
 **Confidence levels per field:**
-- "high" — The value was DIRECTLY and EXPLICITLY written in the document. You copied it verbatim or near-verbatim. Example: "MOISTURE 8% MAX" -> moisture field is high confidence. "Country of Origin: United States" -> country_of_origin is high confidence.
-- "low" — The value was inferred, interpreted, or the source text was ambiguous/garbled. Example: category inferred from product description, status assumed from document being current, supplier_status assumed.
+- "high" — The value was DIRECTLY and EXPLICITLY written in the document. You copied it verbatim or near-verbatim. Example: "MOISTURE MAX" -> moisture field is high confidence. "Country of Origin: United States" -> country_of_origin is high confidence.
+- "low" — The value was inferred, interpreted, or the source text was ambiguous/garbled. Example: category inferred from product description, status assumed from document being current.
 
 **CRITICAL: If a value is inferred or interpreted rather than directly stated, it MUST be "low" confidence — or better yet, leave the field empty and put it in ai_suggestions instead.**
 
