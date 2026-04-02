@@ -11,7 +11,7 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 1. Extract ONLY information explicitly stated in the document. Do NOT infer, guess, or fabricate data. If a value is not written in the document, leave it as empty string — do NOT fill it with a reasonable guess. The following fields are commonly fabricated by mistake — leave them EMPTY unless the document explicitly states them: status, ingredient_type, category, subcategory, packaging_type, packaging_material, pallet_type, transport_conditions, cost fields, country_of_origin, recyclability, certification status. If you want to suggest a value for an empty field, put it ONLY in ai_suggestions — NEVER in the main extraction fields.
 2. If a field's value is not found in the document, return "" (empty string) for string fields, null for numeric fields, and [] for array fields.
 3. Preserve exact values as written — do not convert units or round numbers.
-4. Allergen presence should be determined from allergen statements — "free from" = "not_present", "contains" = "contains", "may contain" = "may_contain".
+4. Allergen presence should be determined from allergen statements — "free from" = "not present", "contains" = "contains", "may contain" = "may_contain".
 5. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
 6. Any sort of product code or similar code given in the document is the "supplier_ingredient_code". Always populate "supplier_ingredient_code" field when such code is given in the document.
 7. If the document contains multiple specification versions or dates, use the most recent one.
@@ -22,6 +22,7 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 12. Extract ALL microbiological specifications (e.g. Mesophilic Bacteria, Yeast, Mold, E. coli, Salmonella) as physical_properties entries.
 13. Extract ALL nutritional values from the document including Polyunsaturated Fat, Monounsaturated Fat, Sugar Alcohols, Soluble Fiber, Insoluble Fiber, and any other listed nutrients. Do NOT skip any nutrient.
 14. ai_suggestions must NEVER contain values from external knowledge not in the document. For example, do NOT suggest CAS numbers, pack sizes, or any data you know from training but is not in this specific document.
+15. **Important**- Do not convert values to snake_case ( adding a underscore sign between words). Preserve the exact format as written in the document. 
 15. MULTI-COLUMN TABLE EXTRACTION — When you encounter a table where column headers may be garbled, split across lines, or concatenated by text extraction, you MUST:
     a) Identify the individual column headers by analyzing the header row(s) and the data patterns below them.
     b) Count the number of data values per row — that tells you how many columns exist.
@@ -71,8 +72,8 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "ingredient_name": "string",
     "common_commercial_name": "string — common or alternative name",
     "label_name_statement": "string — full ingredient statement for labeling",
-    "status": "string — e.g. active, pending, inactive, discontinued",
-    "ingredient_type": "string — e.g. spice, additive, preservative, sweetener, flour, oil, extract",
+    "status": "string — Set the value of status to 'draft' by default if no status is mentioned in the document. Other possible values cane be e.g. draft, R&D use only, pending approval, approval, commercialised",
+    "ingredient_type": "string — Set the value of ingredient_type to 'processed' by default if no type is mentioned in the document. Other possible values can be e.g. Type 1, raw agricultural material, processed, processed ingredient, additive, processing aid, fortificant, culture, compound blend, type 2, raw material, seasoning, spice",
     "category": "string — e.g. seasoning, grain, dairy, protein, fat_oil, sweetener, additive",
     "subcategory": "string — e.g. dry_blend, frozen, fresh, powder, liquid, granular",
     "country_of_origin": "string",
@@ -126,10 +127,10 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
   "allergens": [
     {
-      "allergen_name": "string — e.g. milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame",
-      "presence_level": "string — e.g. contains, may_contain, not_present, undeclared",
+      "allergen_name": "string — strict possible values are:e.g. milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame". Do not use values other than these strict 9 possible values.
+      "presence_level": "string — e.g. contains, may contain, not present". This field should not contain any extra comments other than the 3 values specified.
       "cross_contamination_risk": "string — e.g. high, medium, low, none",
-      "testing_method": "string — e.g. elisa, pcr, lateral flow, supplier declaration, other"
+      "testing_method": "string — Analytical method used to test for this allergen e.g. elisa, pcr, lateral flow, supplier declaration. If no testing method is stated, leave empty."
     }
   ],
  
@@ -147,13 +148,13 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
   "regulatory_compliances": [
     {
-      "region": "string — e.g. us, eu, uk, canada, australia, china, japan, india, global, other",
+      "region": "string — Set the value of region to us be default if no region is mentioned in the document. Other possible values cane be e.g. us, eu, uk, canada, japan, global etc",
       "regulatory_status": "string — e.g. approved, restricted, banned, pending, exempt",
-      "product_category": "string",
+      "product_category": "string - The ingredient category is the product category. Use the ingredient category here.",
       "unit": "string — e.g. percent, ppm, mg_per_kg, mg_per_l, iu, other",
       "effective_date": "string — date in DD/MM/YYYY format",
       "maximum_usage_level": "string",
-      "labelling_requirements": "string",
+      "labelling_requirements": "string- If not specified in the document, provide labeling requirments as per the region",
       "notification_required": "string — 1 for yes, 0 for no",
       "usage_conditions": "string",
       "additional_notes": "string",
@@ -165,8 +166,8 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
   "specifications": {
     "physical_properties": [
       {
-        "property_name": "string — use the ORIGINAL text from the document as-is, preserve spaces and capitalization, do NOT add underscores or convert to snake_case. E.g. 'Moisture', 'Loss on Drying', 'Scoville Heat Units', 'Baume Comm', 'Heavy Metals'" etc. Do not add units symbols to property name. For example property name should have value like Total Solids intsead of Total Solids (%).     
-        "actual_value": "string — the EXACT value as written in the document, preserving all characters, ranges, and qualifiers. E.g. '41.7 – 42.3', '8% MAX', '<0.5', '10,000-20,000 SHU MAX', '99.5% Min.', 'White Free-Flowing Crystals'",
+        "property_name": "string — use the ORIGINAL text from the document as-is, preserve spaces and capitalization, do NOT add underscores or convert to snake_case. E.g. 'Moisture', 'Loss on Drying', 'Scoville Heat Units', 'Baume Comm', 'Heavy Metals'" etc.    
+        "actual_value": "string — the EXACT value as written in the document, preserving all characters, ranges, and qualifiers. E.g. '41.7 – 42.3', '<0.5', '10,000-20,000', 'White Free-Flowing Crystals'",
         "property_value": "string — processed numeric value only: if range take the MAX number, if single value use as-is, strip all non-numeric characters except decimal point. E.g. '41.7 – 42.3' -> '42.3', '8% MAX' -> '8', '<0.5' -> '0.5', '10,000-20,000 SHU MAX' -> '20000', '99.5% Min.' -> '99.5'. For descriptive text (no numbers), keep as-is. E.g. 'White Free-Flowing Crystals' -> 'White Free-Flowing Crystals', 'None' -> 'None'",
         "property_unit": "string — e.g. %, SHU, pH, Aw, g/cm3, cP, C, mm, mg, g, ppm, lbs/cubic ft, g/ml, per g. Extract from the value text.",
         "display_order": "string — sequential number starting from 1"
@@ -181,8 +182,8 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     },
  
     "nutritional_composition": {
-      "reference_basis": "string — e.g. per 100g, per serving, per 100ml, as prepared",
-      "nutrient_data_source": "string — e.g. lab analysis, supplier data, calculated, database, other",
+      "reference_basis": "string — By default set this value to '100g' if no reference basis is mentioned in the document. Other possible values can be e.g. per 100g, per 100ml",
+      "nutrient_data_source": "string — By default set this value to 'manufacture provided' if no nutrient data source is mentioned in the document. Other possible values can be e.g. usda fooddata central, internal analysis, manufacture provided, third party analysis, calculated values".
       "nutrients": [
         {
           "nutrient_name": "string — e.g. calories, total fat, saturated fat, trans fat, cholesterol, sodium, total carbohydrate, dietary fiber, total sugars, added sugars, protein, vitamin d, calcium, iron, potassium, vitamin a, vitamin c, folate, ash, moisture",
@@ -238,10 +239,14 @@ Extract ALL physical, chemical, and microbiological properties as a flat array. 
 - Physical: For Example: appearance, odor, taste, color, physical form, granulation, bulk density, particle_size, viscosity, melting point, solubility, scoville_heat_units etc.
 - Chemical: For Example: fructose content, dextrose content, loss on drying, ash, heavy metals, arsenic, chloride, lead, hmf, sulfate, ph, moisture, water activity, active content, dry matter etc— extract every chemical specification row in the document
 - Microbiological: For Example: mesophilic bacteria, yeast, mold, salmonella, coliform, listeria, total plate count etc — extract every microbiological specification row in the document
-Do NOT skip any specification row found in the document.
+- If documemt says any physical, chemical, or microbiological property is 'not present' or'not detected', do not extract its value.For Example, a phyiscal property Foreign Matter is present, but document says 'not detected', do not extract that property.
 
 ### allergens
-Top-level array. Only include allergens explicitly mentioned. Use lowercase enum values: not_present, contains, may_contain, undeclared. Use lowercase allergen names: milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame.
+- Top-level array.ONLY extract allergens that are EXPLICITLY and DIRECTLY mentioned by name in the document text. 
+- If the document does not mention allergens at all, return [].
+- If a specific allergen from the allowed list is not mentioned anywhere in the document, DO NOT create an entry for it — not even as "not present". Absence of mention ≠ "not present".
+- Strict allowed allergen values are milk, egg, wheat, soy, treenuts, fish, shellfish, peanuts, sesame. You are strictly advised to only include allergens from these values, do not include allergens other than these values. Use lowercase allergen names.
+- Use lowercase enum values: not present, contains, may contain.
 
 ### specifications.nutritional_composition.nutrients
 Extract EVERY nutritional value listed in the document — do NOT skip any. Common nutrients include but are not limited to: calories, calories from saturated fat, total fat, saturated fat, trans fat, polyunsaturated fat, monounsaturated fat, cholesterol, total carbohydrate, total sugars, sugar alcohols, other carbohydrates, dietary fiber, soluble fiber, insoluble fiber, protein, calcium, iron, sodium, potassium, vitamin d, vitamin a, vitamin c, vitamin e, vitamin b6, vitamin b12, thiamine, riboflavin, niacin, folic acid, biotin, pantothenic acid, phosphorus, iodine, magnesium, zinc, copper, ash, moisture. nutrient value should be a string. Include display order starting from "1".
@@ -251,9 +256,6 @@ All dates should be in DD/MM/YYYY format when possible.
 
 ### enum values
 Use lowercase values for all enum/select fields (e.g. "active" not "Active", "bag" not "Bag").
-
-### Note
-- Do not convert values to snake_case. Preserve the exact format as written in the document. Only use snake_case if it explicitly appears in the source text.
 
 ### ai_suggestions — IMPORTANT
 This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string) but where you can make a reasonable suggestion based ONLY on information within this specific document. Rules:
