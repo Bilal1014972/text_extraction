@@ -258,8 +258,9 @@ All dates should be in DD/MM/YYYY format when possible.
 Use lowercase values for all enum/select fields (e.g. "active" not "Active", "bag" not "Bag").
 
 ### ai_suggestions — IMPORTANT
-This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string) but where you can make a reasonable suggestion based ONLY on information within this specific document. Rules:
-- ONLY suggest values for fields that are empty/not extracted. Never suggest for fields that already have values.
+This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string). You have to make a reasonable suggestion based ONLY on information within this specific document. Rules:
+- ONLY suggest values for fields that are empty/not extracted. 
+- **Important** Never ever suggest for fields that already have values.
 - Each suggestion must have a clear reason based on THIS document's content — not your general knowledge.
 - NEVER suggest values from external/training knowledge. For example:
   - Do NOT suggest CAS numbers you know from chemistry training
