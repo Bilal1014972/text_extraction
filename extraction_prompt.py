@@ -72,10 +72,10 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "ingredient_name": "string",
     "common_commercial_name": "string — common or alternative name",
     "label_name_statement": "string — full ingredient statement for labeling",
-    "status": "string — Set the value of status to 'draft' by default if no status is mentioned in the document. Other possible values cane be e.g. draft, R&D use only, pending approval, approval, commercialised",
+    "status": "string — Set the value of status to 'R&D use only' by default if no status is mentioned in the document. Other possible values can be e.g. draft, R&D use only, pending approval, approval, commercialised",
     "ingredient_type": "string — Set the value of ingredient_type to 'processed' by default if no type is mentioned in the document. Other possible values can be e.g. Type 1, raw agricultural material, processed, processed ingredient, additive, processing aid, fortificant, culture, compound blend, type 2, raw material, seasoning, spice",
-    "category": "string — e.g. seasoning, grain, dairy, protein, fat_oil, sweetener, additive",
-    "subcategory": "string — e.g. dry_blend, frozen, fresh, powder, liquid, granular",
+    "category": "string — e.g. Flour and Cereals, Hydrocolloids, Fats and Oils, Cocoa and Chocolate, Nuts and Seeds, Sugar and Sweetner, Emulsifier, Enzymes, Flavors and Colors, Functional and Nutrients, Preservative, Processing Aid, Starch, Food Additive, Seasonings and Spices, Dairy Powders and Concentrates, Eggs and Alternate, Rice Flour, Fat Oil, Grain, Protein",
+    "subcategory": "string — e.g. Wheat Flour, Rice Flour, Corn Flour, Oat Flour, Chickpea Flour, Almond Flour, Peanut Flour, Corn Starch (Native), Corn Starch (Modified), Topioca Starch, Rice Starch, Potato Starch, Sucrose, Mineral, Butter, Shortening, Egg, Powder, Liquid, Flakes, Granular",
     "country_of_origin": "string",
     "geographical_source": "string",
     "processing_location": "string",
@@ -148,13 +148,13 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
   "regulatory_compliances": [
     {
-      "region": "string — Set the value of region to us be default if no region is mentioned in the document. Other possible values cane be e.g. us, eu, uk, canada, japan, global etc",
+      "region": "string — There can be more than one region specified. Extract all regions if available. Set the value of region to us be default if no region is mentioned in the document. Other possible values cane be e.g. us, eu, uk, canada, japan, global etc",
       "regulatory_status": "string — e.g. approved, restricted, banned, pending, exempt",
       "product_category": "string - The ingredient category is the product category. Use the ingredient category here.",
       "unit": "string — e.g. percent, ppm, mg_per_kg, mg_per_l, iu, other",
       "effective_date": "string — date in DD/MM/YYYY format",
       "maximum_usage_level": "string",
-      "labelling_requirements": "string- If not specified in the document, provide labeling requirments as per the region",
+      "labelling_requirements": "string- There can be more than one region and there can be more than one labelling requirement per region. Do not combine labeling requirmenets for multiple regions. Seperate each reqiurment and place that with the corresponding region. If no labeling requirements are specified in the document, provide labeling requirments as per the region",
       "notification_required": "string — 1 for yes, 0 for no",
       "usage_conditions": "string",
       "additional_notes": "string",
@@ -209,7 +209,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
 
   "ai_suggestions": [
     {
-      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.status', 'ingredient.ingredient_type'",
+      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.ingredient_type'",
       "suggested_value": "string — the suggested value for this field",
       "reason": "string — brief explanation of why this value is suggested"
     }
@@ -266,8 +266,7 @@ This array contains smart suggestions for fields that were NOT extracted from th
   - Do NOT suggest pack sizes based on industry norms
   - Do NOT suggest prices, weights, or quantities not in the document
 - Good suggestions (based on document context):
-  - status: "active" when document has a recent date and is not marked discontinued
-  - ingredient_type/category/subcategory: when product description clearly implies it (e.g. "sweetest of natural sugars" implies sweetener)
+  - ingredient_type/category/subcategory: when product description clearly implies it (e.g. "sweetest of natural sugars" implies "Sugar and Sweetner")
   - transport_conditions: when storage temp clearly implies it (e.g. "store below 30°C" implies ambient)
 - Keep suggestions practical and based on evidence within the document only.
 
