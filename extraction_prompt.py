@@ -75,7 +75,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "status": "string — Set the value of status to 'R&D use only' by default if no status is mentioned in the document. Other possible values can be e.g. draft, R&D use only, pending approval, approval, commercialised",
     "ingredient_type": "string — Set the value of ingredient_type to 'processed' by default if no type is mentioned in the document. Other possible values can be e.g. Type 1, raw agricultural material, processed, processed ingredient, additive, processing aid, fortificant, culture, compound blend, type 2, raw material, seasoning, spice",
     "category": "string — e.g. Flour and Cereals, Hydrocolloids, Fats and Oils, Cocoa and Chocolate, Nuts and Seeds, Sugar and Sweetner, Emulsifier, Enzymes, Flavors and Colors, Functional and Nutrients, Preservative, Processing Aid, Starch, Food Additive, Seasonings and Spices, Dairy Powders and Concentrates, Eggs and Alternate, Rice Flour, Fat Oil, Grain, Protein",
-    "subcategory": "string — e.g. Wheat Flour, Rice Flour, Corn Flour, Oat Flour, Chickpea Flour, Almond Flour, Peanut Flour, Corn Starch (Native), Corn Starch (Modified), Topioca Starch, Rice Starch, Potato Starch, Sucrose, Mineral, Butter, Shortening, Egg, Powder, Liquid, Flakes, Granular",
+    "subcategory": "string—  Choose the most close subcategory keeping in view the selected category e.g. Wheat Flour, Rice Flour, Corn Flour, Oat Flour, Chickpea Flour, Cocoa Powder, Cocoa butter, Chocolate, Almond Flour, Peanut Flour, Corn Starch (Native), Corn Starch (Modified), Topioca Starch, Rice Starch, Potato Starch, Sucrose, Mineral, Butter, Shortening, Egg, Powder, Liquid, Flakes, Granular",
     "country_of_origin": "string",
     "geographical_source": "string",
     "processing_location": "string",
@@ -260,7 +260,7 @@ Use lowercase values for all enum/select fields (e.g. "active" not "Active", "ba
 ### ai_suggestions — IMPORTANT
 This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string). You have to make a reasonable suggestion based ONLY on information within this specific document. Rules:
 - ONLY suggest values for fields that are empty/not extracted. 
-- **Important** Never ever suggest for fields that already have values.
+- **Important** Must Never ever gives ai suggestions for the field that are already extracted. 
 - Each suggestion must have a clear reason based on THIS document's content — not your general knowledge.
 - NEVER suggest values from external/training knowledge. For example:
   - Do NOT suggest CAS numbers you know from chemistry training
