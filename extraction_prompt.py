@@ -13,7 +13,7 @@ EXTRACTION_SYSTEM_PROMPT = """You are an expert food science data extraction sys
 3. Preserve exact values as written — do not convert units or round numbers.
 4. Allergen presence should be determined from allergen statements — "free from" = "not present", "contains" = "contains", "may contain" = "may_contain".
 5. For nutritional data, extract per 100g values when available. If a different basis is used, note it in reference_basis.
-6. Any sort of product code or similar code given in the document is the "supplier_ingredient_code". Always populate "supplier_ingredient_code" field when such code is given in the document.
+6. If the document contains a product code, item number, material code, article number, or similar identifier, extract the FIRST or PRIMARY one as "supplier_ingredient_code". If the document lists multiple codes for different packaging variants of the same ingredient, use only the first code listed.
 7. If the document contains multiple specification versions or dates, use the most recent one.
 8. Handle OCR noise gracefully — minor typos or garbled text from logos/watermarks should be ignored.
 9. Return ONLY the JSON object. No explanations, no markdown, no backticks.
@@ -71,7 +71,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
   "ingredient": {
     "ingredient_name": "string",
     "common_commercial_name": "string — common or alternative name",
-    "label_name_statement": "string — full ingredient statement for labeling",
+    "label_name_statement": "string — The ingredient declaration as it would appear in a product's ingredient list on packaging (e.g. 'Coconut Oil', 'Sugar', 'Modified Corn Starch', 'Soy Lecithin (E322)'). This is NOT the product description or marketing text. If the document explicitly provides an 'Ingredient Statement', 'Ingredient Declaration', 'Label Declaration', or 'Ingredient List', extract that exactly. If no explicit label statement is provided, use the simplest accurate ingredient name as it would legally appear on a food label. Do NOT extract product descriptions, marketing paragraphs, or explanatory text about what the ingredient is. Leave the field empty if no label statement is provided.",
     "status": "string — Set the value of status to 'R&D use only' by default if no status is mentioned in the document. Other possible values can be e.g. draft, R&D use only, pending approval, approval, commercialised",
     "ingredient_type": "string — Set the value of ingredient_type to 'processed' by default if no type is mentioned in the document. Other possible values can be e.g. Type 1, raw agricultural material, processed, processed ingredient, additive, processing aid, fortificant, culture, compound blend, type 2, raw material, seasoning, spice",
     "category": "string — e.g. Flour and Cereals, Hydrocolloids, Fats and Oils, Cocoa and Chocolate, Nuts and Seeds, Sugar and Sweetner, Emulsifier, Enzymes, Flavors and Colors, Functional and Nutrients, Preservative, Processing Aid, Starch, Food Additive, Seasonings and Spices, Dairy Powders and Concentrates, Eggs and Alternate, Rice Flour, Fat Oil, Grain, Protein",
@@ -87,7 +87,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "storage_temp": "string",
     "storage_humidity": "string",
     "special_handling": "string",
-    "packaging_type": "string — e.g. bag, box, drum, pail, tote, bulk, pouch, can, bottle, other",
+    "packaging_type": "string — Only select one of the following: e.g. bag, box, drum, pail, tote, bulk, pouch, can, bottle, ibc",
     "packaging_material": "string — e.g. plastic, paper, foil, glass, metal, composite, other",
     "pack_size": "string",
     "units_per_pallet": "string",
@@ -101,7 +101,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
     "suppliers": [
       {
-        "supplier_ingredient_code": "string",
+        "supplier_ingredient_code": "string — The "supplier_ingredient_code" is a code that uniquely identifies the INGREDIENT itself (e.g., a material number, article number, or ingredient code — typically a single code appearing near the product name or in a header/summary section). Do NOT extract pack-size-specific SKUs, Item numbers for different packaging formats, or order codes from an "Available Products" / "Ordering Information" table — these are packaging-level codes, not ingredient codes. If no ingredient-level code exists, leave the field as empty string.",
         "supplier_name": "string"
       }
     ],
@@ -148,14 +148,13 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
  
   "regulatory_compliances": [
     {
-      "region": "string — There can be more than one region specified. Extract all regions if available. Set the value of region to us be default if no region is mentioned in the document. Other possible values cane be e.g. us, eu, uk, canada, japan, global etc",
+      "region": "string — Only extract if region is explicity mentioned in the document. Region must ONLY be extracted if tied to an explicit compliance, approval, restriction, or labeling instruction. Standalone mentions of regions in regulatory references, footnotes, or allergen frameworks MUST be ignored.  If no region is mentioned in the document leave the string empty. If more than one region are specified in regulatory compliance, extract all regions. Possible values if region is mentioned in the document can be e.g.  US, EU, UK, Canada, Japan, Global etc",
       "regulatory_status": "string — e.g. approved, restricted, banned, pending, exempt",
       "product_category": "string - The ingredient category is the product category. Use the ingredient category here.",
       "unit": "string — e.g. percent, ppm, mg_per_kg, mg_per_l, iu, other",
       "effective_date": "string — date in DD/MM/YYYY format",
       "maximum_usage_level": "string",
-      "labelling_requirements": "string- There can be more than one region and there can be more than one labelling requirement per region. Do not combine labeling requirmenets for multiple regions. Seperate each reqiurment and place that with the corresponding region. If no labeling requirements are specified in the document, provide labeling requirments as per the region",
-      "notification_required": "string — 1 for yes, 0 for no",
+      "labelling_requirements": "string — Extract labeling requirements ONLY if the document contains an explicit labeling instruction directed at this product (e.g. 'Must be labeled as...', 'Label must declare...', 'Labeling requirement: ...'). If no such explicit instruction exists, leave as empty string. Do NOT generate, infer, or construct labeling requirement sentences from regulatory knowledge. CRITICAL: Footnote citations or references to regulations in allergen tables (e.g. '* EU: Regulation 1169/2011', '** USA: Food Allergen Labeling and Consumer Protection Act of 2004', '*** Japan: Food Labelling Standards') are bibliographic references explaining the source of the allergen list — they are NOT labeling requirements for this product. Do NOT convert these into 'Must be labeled according to...' statements. That is fabrication.",
       "usage_conditions": "string",
       "additional_notes": "string",
       "approved_claims": "string",
@@ -209,7 +208,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
 
   "ai_suggestions": [
     {
-      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.ingredient_type'",
+      "field": "string — dot-notation path to the field that was NOT extracted, e.g. 'ingredient.packaging_type'. Only fill this field if you want to suggest a value for an empty field.",
       "suggested_value": "string — the suggested value for this field",
       "reason": "string — brief explanation of why this value is suggested"
     }
@@ -257,7 +256,8 @@ All dates should be in DD/MM/YYYY format when possible.
 ### enum values
 Use lowercase values for all enum/select fields (e.g. "active" not "Active", "bag" not "Bag").
 
-### ai_suggestions — IMPORTANT
+### ai_suggestions — IMPORTANT (ONLY for non-extracted fields)
+
 This array contains smart suggestions for fields that were NOT extracted from the document (left as empty string). You have to make a reasonable suggestion based ONLY on information within this specific document. Rules:
 - ONLY suggest values for fields that are empty/not extracted. 
 - **Important** Must Never ever gives ai suggestions for the field that are already extracted. 
@@ -267,9 +267,12 @@ This array contains smart suggestions for fields that were NOT extracted from th
   - Do NOT suggest pack sizes based on industry norms
   - Do NOT suggest prices, weights, or quantities not in the document
 - Good suggestions (based on document context):
-  - ingredient_type/category/subcategory: when product description clearly implies it (e.g. "sweetest of natural sugars" implies "Sugar and Sweetner")
   - transport_conditions: when storage temp clearly implies it (e.g. "store below 30°C" implies ambient)
 - Keep suggestions practical and based on evidence within the document only.
+
+### Important Note on ai_suggestions
+- For fields that were extracted from the document, never add them to ai_suggestions.
+- For fields that have by default values, do not add them to ai_suggestions. For example, ingredient.status has a default value of "R&D use only" so in this case donot add status field to ai_suggestions.
 
 ### extraction_stats
 
