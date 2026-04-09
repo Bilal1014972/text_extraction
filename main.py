@@ -21,3 +21,7 @@ app.include_router(extract_router, tags=["Extract Endpoint"])
 
 ############## Summarize ENDPOINT #################
 app.include_router(summarize_router, tags=["Summarize Endpoint"])
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
