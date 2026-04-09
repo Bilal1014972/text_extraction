@@ -17,7 +17,7 @@ app.add_middleware(
 
 
 ################ Extract Endpoint ################
-app.include_router(extract_router, prefix="/api1", tags=["Extract Endpoint"])
+app.include_router(extract_router, tags=["Extract Endpoint"])
 
 ############## Summarize ENDPOINT #################
-app.include_router(summarize_router, prefix="/api2", tags=["Summarize Endpoint"])
+app.include_router(summarize_router, tags=["Summarize Endpoint"])
