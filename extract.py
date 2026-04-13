@@ -4,7 +4,7 @@ import shutil
 import os
 import json
 import httpx
-from fastapi import FastAPI,APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException
 import fitz  # pymupdf
 import pdfplumber
 from docx import Document
@@ -12,10 +12,12 @@ from PIL import Image
 import io
 import tempfile
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
-from fastapi.middleware.cors import CORSMiddleware
-
-
+from pillow_heif import register_heif_opener
 from dotenv import load_dotenv
+
+# Enable HEIC/HEIF support (iPhone photos)
+register_heif_opener()
+
 load_dotenv()
 
 if platform.system() == "Windows":
@@ -27,33 +29,70 @@ else:
 
 router = APIRouter()
 
-
 ALLOWED_TYPES = {
     "application/pdf",
     "image/png", "image/jpeg", "image/webp", "image/tiff",
+    "image/heic", "image/heif",  # iPhone native formats
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 MAX_SIZE = 20 * 1024 * 1024
+
+# HEIC/HEIF brand codes per ISO 23008-12
+_HEIC_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs"}
+_HEIF_BRANDS = {b"mif1", b"msf1"}
 
 OLLAMA_URL = os.getenv("OLLAMA_URL")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 
 
+def sniff_mime(data: bytes, declared: str) -> str:
+    """
+    Detect the true MIME type from magic bytes.
+    Falls back to declared Content-Type when no signature matches.
+    Prevents rejecting valid files sent as application/octet-stream
+    (common with HEIC files in Postman, curl, and browsers).
+    """
+    if data[:4] == b"%PDF":
+        return "application/pdf"
+    if data[:4] == b"PK\x03\x04":
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:4] in (b"II*\x00", b"MM\x00*"):
+        return "image/tiff"
+    # HEIC/HEIF: ftyp box at byte offset 4
+    if data[4:8] == b"ftyp":
+        brand = data[8:12]
+        if brand in _HEIC_BRANDS:
+            return "image/heic"
+        if brand in _HEIF_BRANDS:
+            return "image/heif"
+    return declared
+
+
 @router.post("/extract")
 async def analyze(file: UploadFile = File(...)):
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, f"Unsupported type: {file.content_type}")
-
     data = await file.read()
+
+    # Sniff real MIME — must happen before size check and routing
+    content_type = sniff_mime(data, file.content_type or "")
+
+    if content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, f"Unsupported type: {content_type}")
+
     if len(data) > MAX_SIZE:
         raise HTTPException(413, "File too large (max 20MB)")
 
-    # Step 1: Extract text
+    # Step 1: Extract text — use sniffed content_type, NOT file.content_type
     try:
-        if file.content_type == "application/pdf":
+        if content_type == "application/pdf":
             extraction = extract_from_pdf(data)
-        elif file.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
             extraction = extract_from_docx(data)
         else:
             extraction = {"pages": [{"page": 1, "text": extract_from_image(data)}]}
@@ -175,4 +214,11 @@ def ocr_page(pdf_data: bytes, page_index: int) -> str:
 
 def extract_from_image(data: bytes) -> str:
     img = Image.open(io.BytesIO(data))
+    # Pytesseract checks image.format against a whitelist (PNG, JPEG, TIFF...).
+    # HEIF is not on that list even when mode is already RGB.
+    # Fix: re-encode through an in-memory PNG buffer to reset the format tag.
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="PNG")
+    buf.seek(0)
+    img = Image.open(buf)
     return pytesseract.image_to_string(img)

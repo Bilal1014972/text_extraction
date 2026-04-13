@@ -3,6 +3,7 @@ uvicorn
 python-multipart
 pytesseract
 Pillow
+pillow-heif
 pymupdf
 pdfplumber
 python-docx
