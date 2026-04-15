@@ -230,6 +230,12 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
   }
 }
 
+If document is not a technical datasheet related to food, return the following JSON object:
+
+{
+  message: "Document is not a technical datasheet related to food or food products. Please upload a technical datasheet related to food or food products."
+}
+
 
 ## IMPORTANT NOTES
 
