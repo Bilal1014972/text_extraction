@@ -14,6 +14,7 @@ import tempfile
 from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_TEMPLATE
 from pillow_heif import register_heif_opener
 from dotenv import load_dotenv
+from nutrient_normalization import normalize_nutrition_to_100g
 
 # Enable HEIC/HEIF support (iPhone photos)
 register_heif_opener()
@@ -113,6 +114,9 @@ async def analyze(file: UploadFile = File(...)):
         raise HTTPException(502, "LLM returned invalid JSON")
     except Exception as e:
         raise HTTPException(502, f"LLM analysis failed: {str(e)}")
+    
+    # Step 3: Normalize nutrition to 100g  ← ADD THIS
+    structured_data = normalize_nutrition_to_100g(structured_data)
 
     return {
         "filename": file.filename,

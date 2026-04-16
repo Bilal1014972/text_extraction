@@ -181,7 +181,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     },
  
     "nutritional_composition": {
-      "reference_basis": "string — By default set this value to '100g' if no reference basis is mentioned in the document. Other possible values can be e.g. per 100g, per 100ml",
+      "reference_basis": "string — Extract EXACTLY as stated in the document (e.g. '14g', '100g', '1 serving (30g)'). If the document says 'Serving Size 1 Tablespoon 14G', extract '14g'. If truly not stated, use '100g'.",",
       "nutrient_data_source": "string — By default set this value to 'manufacture provided' if no nutrient data source is mentioned in the document. Other possible values can be e.g. usda fooddata central, internal analysis, manufacture provided, third party analysis, calculated values".
       "nutrients": [
         {
