@@ -4,7 +4,7 @@ import shutil
 import os
 import json
 import httpx
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 import fitz  # pymupdf
 import pdfplumber
 from docx import Document
@@ -15,6 +15,7 @@ from extraction_prompt import EXTRACTION_SYSTEM_PROMPT, EXTRACTION_USER_PROMPT_T
 from pillow_heif import register_heif_opener
 from dotenv import load_dotenv
 from nutrient_normalization import normalize_nutrition_to_100g
+from auth import require_bearer  # ← auth dependency
 
 # Enable HEIC/HEIF support (iPhone photos)
 register_heif_opener()
@@ -76,7 +77,11 @@ def sniff_mime(data: bytes, declared: str) -> str:
     return declared
 
 
-@router.post("/extract")
+# ---------------------------------------------------------------------------
+# The route now declares require_bearer as a dependency.
+# FastAPI resolves it before the handler runs — no token, no entry.
+# ---------------------------------------------------------------------------
+@router.post("/extract", dependencies=[Depends(require_bearer)])
 async def analyze(file: UploadFile = File(...)):
     data = await file.read()
 
@@ -114,8 +119,8 @@ async def analyze(file: UploadFile = File(...)):
         raise HTTPException(502, "LLM returned invalid JSON")
     except Exception as e:
         raise HTTPException(502, f"LLM analysis failed: {str(e)}")
-    
-    # Step 3: Normalize nutrition to 100g  ← ADD THIS
+
+    # Step 3: Normalize nutrition to 100g
     structured_data = normalize_nutrition_to_100g(structured_data)
 
     return {

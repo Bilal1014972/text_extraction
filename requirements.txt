@@ -9,3 +9,4 @@ pdfplumber
 python-docx
 httpx
 python-dotenv
+cachetools>=5.3
