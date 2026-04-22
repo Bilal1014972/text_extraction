@@ -4,12 +4,16 @@ from extract import router as extract_router
 from summarize import router as summarize_router
 from auth import shutdown_auth
 from contextlib import asynccontextmanager
+from summarize import router as summarize_router
+from summarize import startup as summarize_startup, shutdown as summarize_shutdown
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: nothing to do for now
+    # Startup: wire up HTTP clients owned by each module
+    await summarize_startup()
     yield
-    # Shutdown: close the auth httpx client cleanly
+    # Shutdown: close every client we created, in reverse order
+    await summarize_shutdown()
     await shutdown_auth()
 
 app = FastAPI(lifespan=lifespan)
