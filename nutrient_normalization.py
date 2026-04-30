@@ -132,7 +132,7 @@ def normalize_nutrition_to_100g(llm_output: dict[str, Any]) -> dict[str, Any]:
             skipped_count += 1
             continue
 
-        raw_value: str = nutrient.get("nutrient_value", "")
+        raw_value: str = nutrient.get("actual_value", "")
         parsed = _safe_float(raw_value)
 
         if parsed is None:
@@ -141,7 +141,7 @@ def normalize_nutrition_to_100g(llm_output: dict[str, Any]) -> dict[str, Any]:
             continue
 
         converted = parsed * factor
-        nutrient["nutrient_value"] = _round_nutrient(converted, unit)
+        nutrient["actual_value"] = _round_nutrient(converted, unit)
         # actual_value preserved as-is (original document value)
         converted_count += 1
 

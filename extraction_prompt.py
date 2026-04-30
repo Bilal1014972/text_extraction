@@ -74,7 +74,7 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
     "label_name_statement": "string — The ingredient declaration as it would appear in a product's ingredient list on packaging (e.g. 'Coconut Oil', 'Sugar', 'Modified Corn Starch', 'Soy Lecithin (E322)'). This is NOT the product description or marketing text. If the document explicitly provides an 'Ingredient Statement', 'Ingredient Declaration', 'Label Declaration', or 'Ingredient List', extract that exactly. suggesstions if not provided. If no explicit label statement is provided, use the simplest accurate ingredient name as it would legally appear on a food label. Do NOT extract product descriptions, marketing paragraphs, or explanatory text about what the ingredient is. Leave the field empty if no label statement is provided.",
     "status": "string — Set the value of status to 'R&D use only' by default if no status is mentioned in the document. Other possible values can be e.g. draft, R&D use only, pending approval, approval, commercialised",
     "ingredient_type": "string — Set the value of ingredient_type to 'processed' by default if no type is mentioned in the document. Other possible values can be e.g. Type 1, raw agricultural material, processed, processed ingredient, additive, processing aid, fortificant, culture, compound blend, type 2, raw material, seasoning, spice",
-    "category": "string — e.g. Flour and Cereals, Hydrocolloids, Fats and Oils, Cocoa and Chocolate, Nuts and Seeds, Sugar and Sweetner, Emulsifier, Enzymes, Flavors and Colors, Functional and Nutrients, Preservative, Processing Aid, Starch, Food Additive, Seasonings and Spices, Dairy Powders and Concentrates, Eggs and Alternate, Rice Flour, Fat Oil, Grain, Protein",
+    "category": "string — e.g. Flour and Cereals, Hydrocolloids, Fats and Oils, Cocoa and Chocolate, Nuts and Seeds, Sugar and Sweetener, Emulsifier, Enzymes, Flavors and Colors, Functional and Nutrients, Preservative, Processing Aid, Starch, Food Additive, Seasonings and Spices, Dairy Powders and Concentrates, Eggs and Alternate, Rice Flour, Fat Oil, Grain, Protein",
     "subcategory": "string—  Choose the most close subcategory keeping in view the selected category e.g. Wheat Flour, Rice Flour, Corn Flour, Oat Flour, Chickpea Flour, Cocoa Powder, Cocoa butter, Chocolate, Almond Flour, Peanut Flour, Corn Starch (Native), Corn Starch (Modified), Topioca Starch, Rice Starch, Potato Starch, Sucrose, Mineral, Butter, Shortening, Egg, Powder, Liquid, Flakes, Granular",
     "country_of_origin": "string",
     "geographical_source": "string",
@@ -180,22 +180,21 @@ Do not use "```json" in your response. Return ONLY valid JSON with no comments o
       "specification_version": "string"
     },
  
-    "nutritional_composition": {
+      "nutritional_composition": {
       "reference_basis": "string — Extract EXACTLY as stated in the document (e.g. '14g', '100g', '1 serving (30g)'). If the document says 'Serving Size 1 Tablespoon 14G', extract '14g'. If truly not stated, use '100g'.",",
       "nutrient_data_source": "string — By default set this value to 'manufacture provided' if no nutrient data source is mentioned in the document. Other possible values can be e.g. usda fooddata central, internal analysis, manufacture provided, third party analysis, calculated values".
       "nutrients": [
         {
           "nutrient_name": "string — e.g. calories, total fat, saturated fat, trans fat, cholesterol, sodium, total carbohydrate, dietary fiber, total sugars, added sugars, protein, vitamin d, calcium, iron, potassium, vitamin a, vitamin c, folate, ash, moisture",
           "nutrient_unit": "string — e.g. kcal, g, mg, mcg, mcg_rae, iu",
-          "actual_value": "string — the EXACT value as written in the document, preserving all characters and qualifiers. E.g. '< 0.10', '99.8', '0', '>50'",
-          "nutrient_value": "string — processed numeric value only, strip all non-numeric characters except decimal point. E.g. '< 0.10' -> '0.10', '>50' -> '50', '99.8' -> '99.8'",
-          "nutrient_value": "string — the numeric value as string",
+          "actual_value": "string — processed numeric value only, strip all non-numeric characters except decimal point. E.g. '< 0.10' -> '0.10', '>50' -> '50', '99.8' -> '99.8'",
           "nutrient_percent_dv": "string — percent daily value if available, otherwise empty string",
           "display_order": "string — sequential number starting from 1"
         }
       ]
     }
   },
+
  
   "documents": [
     {
